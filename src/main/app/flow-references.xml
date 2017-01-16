@@ -61,7 +61,7 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
         <flow-ref name="sf_createHtml" doc:name="sf_createHtml"/>
         <flow-ref name="sf_launchBrowser" doc:name="sf_launchBrowser"/>
         <flow-ref name="sf_endGame" doc:name="sf_endGame"/>
-        <batch:execute name="MyBatch" doc:name="Batch Execute"/>
+
     </flow>
 
     <sub-flow name="sf_templateChooser">

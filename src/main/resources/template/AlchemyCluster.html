@@ -1,0 +1,25 @@
+<html>
+<head>
+<link rel="stylesheet" href="alchemy.0.4.2/alchemy.css"/>
+</head>
+<body>
+  <div class="alchemy" id="alchemy"></div>
+  <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.16.4/lodash.min.js" charset="utf-8"></script>
+  <script src="alchemy.0.4.2/alchemy.js" charset="utf-8"></script>
+  
+  <script type="text/javascript">
+        var myData = #[payload];
+        
+        
+                alchemy.begin(
+        		{
+        			"dataSource": myData,
+        			 nodeCaptionsOnByDefault: true,
+        			 cluster: true,
+        	         clusterColours: ["#1B9E77","#D95F02","#7570B3","#E7298A","#66A61E","#E6AB02"]
+        		})
+		
+    </script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+			 def UUID()        {
+			 	 return java.util.UUID.randomUUID().toString();
+			 }
+             def decode(value) {
+                 return java.util.Base64.getDecoder().decode(value);
+             }
+             def encode(value) {
+                 return java.util.Base64.getEncoder().encodeToString(value.getBytes());
+             }
+             def stringToAscii(value) {
+				StringBuilder sb = new StringBuilder();
+				for (char c : value.toCharArray())sb.append((int)c);
+				return new BigInteger(sb.toString());
+             }

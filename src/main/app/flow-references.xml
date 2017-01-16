@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:cluster="http://www.mulesoft.org/schema/mule/ee/cluster" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:quartz="http://www.mulesoft.org/schema/mule/quartz" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:mulexml="http://www.mulesoft.org/schema/mule/xml" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/current/mule-xml.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/quartz http://www.mulesoft.org/schema/mule/quartz/current/mule-quartz.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+
+<context:property-placeholder location="mule-app.properties"/>
+
+<file:connector name="Synchronous-File-Connector-NO-THREADING" autoDelete="true" doc:name="File" streaming="true" validateConnections="true" doc:description="dispatcher-threading-profile doThreading=&quot;false&quot;">
+  <dispatcher-threading-profile doThreading="false"/>
+</file:connector>
+
+
+	<configuration doc:name="Global MEL-Functions">	
+     		<expression-language>				
+			    <global-functions file="mel/extraFunctions.mvel">
+				</global-functions>
+			</expression-language>	
+	</configuration>
+	
+	
+    <configuration defaultExceptionStrategy-ref="Choice_Exception_Strategy" doc:name="Configuration_DefaultExceptionStrat" >
+        <http:config useTransportForUris="false"/>
+    </configuration>
+    <configuration defaultProcessingStrategy="synchronous" doc:name="Configuration_DefaultProcessingStrat_synchronous">
+        <http:config useTransportForUris="false"/>
+    </configuration>
+	
+    <flow name="f_main" initialState="started" doc:description="///////////////////////// 
+// lookupFlowConstruct(&quot;flowName&quot;);
+// #[dw('lookup(&quot;theFlowName&quot;, flowVars.theParam)')] 
+// &quot;Variable&quot; : lookup(&quot;flowName&quot;, inputToFlow)
+// filter onUnaccepted=&quot;f_NullPayload&quot;
+// https://forums.mulesoft.com/questions/39672/is-it-possible-to-call-a-flow-from-another-project.html
+ /////////////////////////">
+        <quartz:inbound-endpoint jobName="OnStartUpOnly" repeatInterval="1" repeatCount="0" responseTimeout="10000" name="runOnce" doc:name="runOnce">
+            <quartz:event-generator-job/>
+        </quartz:inbound-endpoint>
+        
+        
+        <flow-ref name="sf_templateChooser" doc:name="sf_templateChooser"/>
+        <flow-ref name="sf_findConfigFiles" doc:name="sf_findConfigFiles"/>
+        <flow-ref name="sf_createProcessFoundFiles" doc:name="sf_createProcessFoundFiles"/>
+        <flow-ref name="sf_createHtml" doc:name="sf_createHtml"/>
+        <flow-ref name="sf_launchBrowser" doc:name="sf_launchBrowser"/>
+        <flow-ref name="sf_endGame" doc:name="sf_endGame"/>
+        <batch:execute name="MyBatch" doc:name="Batch Execute"/>
+    </flow>
+
+    <sub-flow name="sf_templateChooser">
+        <component class="com.lowcoders.ui.TemplateChooser" doc:name="Java - Template Chooser"/>
+        <set-variable variableName="templateType" value="#[payload]" doc:name="templateType"/>
+        <validation:is-not-empty message="Please Select your Template or Cancel to exit JVM" value="#[payload]" doc:name="Validation - Check For No Template"/>
+    </sub-flow>
+    <sub-flow name="sf_findConfigFiles">
+        <component class="com.lowcoders.ui.DirectoryChooser" doc:name="Java - UI -DirectoryChooser"/>
+        <validation:is-not-empty message="Please Select your Mule Config App directory or Cancel to exit JVM" value="#[payload]" doc:name="Validation - Check For No Directory"/>
+        <set-payload value="#[payload.replace(&quot;\\&quot;, &quot;/&quot;)]" doc:name="Replace backslashes with slash"/>
+        <set-variable variableName="AppDirectory" value="#[payload]" doc:name="AppDirectory"/>
+        <set-variable variableName="MainDirectory" value="#[flowVars.AppDirectory.replaceAll(&quot;(?i)app&quot;, &quot;&quot;)]" doc:name="MainDirectory - Replace app (Case insensitive)"/>
+        <component class="com.lowcoders.utils.ListFilesOnlyXML" doc:name="Java - Utils - ListFiles(xml extension)"/>
+        <validation:is-true message="No XML files were found in choosen directory, try again or Cancel to exit JVM" expression="#[payload.size() &gt; 0]" doc:name="Validation - No XML files found"/>
+    </sub-flow>
+    <sub-flow name="sf_createProcessFoundFiles">
+        <splitter expression="#[payload]" doc:name="Splitter"/>
+        <set-variable variableName="filePathToRead" value="#[message.payloadAs(java.lang.String)]" doc:name="filePathToRead"/>
+        <set-variable variableName="configFileName" value="#[org.apache.commons.io.FilenameUtils.getName(flowVars.filePathToRead)]" doc:name="configFileName"/>
+        <flow-ref name="sf_readFile" doc:name="sf_readFile"/>
+        <choice doc:name="Choice">
+            <when expression="#[payload == null]">
+                <logger message="No File Test to Parse" level="INFO" doc:name="Logger"/>
+            </when>
+            <otherwise>
+                <set-property propertyName="content-type" value="text/xml" encoding="UTF-8" mimeType="text/xml" doc:name="Set Content-Type"/>
+                <set-variable variableName="clusterNumber" value="#[message.outboundProperties['MULE_CORRELATION_SEQUENCE']]" doc:name="clusterNumber(MULE_CORRELATION_SEQUENCE)"/>
+                
+                <scripting:component doc:name="Background Color according to Cluster">
+                    <scripting:script engine="Groovy"><![CDATA[switch (flowVars.clusterNumber) {
+         case 1: flowVars.color = "DarkBlue"; break;
+         case 2: flowVars.color = "DarkGreen"; break;
+         case 3: flowVars.color = "DarkRed"; break;
+         case 4: flowVars.color = "DarkOrange"; break;
+         case 5: flowVars.color = "ForestGreen"; break;
+         case 6: flowVars.color = "DodgerBlue"; break;
+         case 7: flowVars.color = "DarkViolet"; break;
+         case 8: flowVars.color = "Gainsboro"; break;
+         case 9: flowVars.color = "GoldenRod"; break;
+         case 10: flowVars.color = "HotPink"; break;
+         case 11: flowVars.color = "GreenYello"; break;
+         case 12: flowVars.color = "LightBlue"; break;
+         case 13: flowVars.color = "Plum"; break;
+         case 14: flowVars.color = "Teal"; break; 
+         case 15: flowVars.color = "Tan"; break;   
+         default: flowVars.color = "Thistle";
+      }
+return payload]]></scripting:script>
+                </scripting:component>
+                <dw:transform-message doc:name="Transform XML Mule Config File to Java JsonGraph">
+                    <dw:input-payload doc:sample="sample_data\empty.xml" mimeType="application/xml"/>
+                    <dw:input-variable doc:sample="sample_data\string.dwl" mimeType="application/java" variableName="configFileName"/>
+                    <dw:input-variable doc:sample="sample_data\integer.dwl" mimeType="application/java" variableName="clusterNumber"/>
+                    <dw:set-payload resource="classpath:dataweave/XMLMule_to_JsonGraph.dwl"/>
+                </dw:transform-message>
+            </otherwise>
+        </choice>
+        <collection-aggregator failOnTimeout="true" doc:name="Collection Aggregator"/>
+        <dw:transform-message doc:name="Merge, Remove Duplicates  &amp; Add Graph Root">
+            <dw:input-payload mimeType="application/java" />
+            <dw:set-payload resource="classpath:dataweave/mergeParseResults.dwl"/>
+        </dw:transform-message>
+    </sub-flow>
+    <flow name="f_processFoundDW_Inline">
+        <idempotent-message-filter idExpression="#[message:payload]" doc:name="Idempotent Message - onUnaccepted Null payload"  onUnaccepted="f_nullPayload">
+            <in-memory-store name="ProcessFoundDW_InlineInMemoryObjectStore" maxEntries="60000" entryTTL="120" expirationInterval="3600"/>
+</idempotent-message-filter>
+        <message-properties-transformer scope="invocation" doc:name="Save Input As Individual Variables">
+            <add-message-property key="payload_source" value="#[payload.source]"/>
+            <add-message-property key="payload_caption" value="#[payload.caption]"/>
+            <add-message-property key="payload_methodType" value="#[payload.methodType]"/>
+        </message-properties-transformer>
+        <set-payload value="#[payload.target]" doc:name="Set Payload.target to Payload"/>
+        <base64-decoder-transformer encoding="utf8" doc:name="base64-decoder-transformer"></base64-decoder-transformer>
+        <message-properties-transformer scope="invocation" doc:name="Set Regex Arguments">
+            <add-message-property key="regex" value="lookup\(&quot;([^\s]+)&quot;,"/>
+            <add-message-property key="stringToTest" value="#[message.payloadAs(java.lang.String)]"/>
+        </message-properties-transformer>
+        <flow-ref name="sf_processFoundDW_ExtractFlowNames" doc:name="sf_processFoundDW_ExtractFlowNames"/>
+    </flow>
+    <flow name="f_processFoundDW_File">
+        <idempotent-message-filter idExpression="#[message:payload]" onUnaccepted="f_nullPayload" doc:name="Idempotent Message - onUnaccepted Null payload">
+            <in-memory-store name="ProcessFoundDW_FileInMemoryObjectStore" maxEntries="60000" entryTTL="120" expirationInterval="3600"/>
+        </idempotent-message-filter>
+        <message-properties-transformer scope="invocation" doc:name="Save Input As Individual Variables">
+            <add-message-property key="payload_source" value="#[payload.source]"/>
+            <add-message-property key="payload_caption" value="#[payload.caption]"/>
+            <add-message-property key="payload_methodType" value="#[payload.methodType]"/>
+        </message-properties-transformer>
+        <set-payload value="#[payload.target.replaceAll('classpath:', '')]" doc:name="Set Payload.target to Payload &amp; Remove Classpath"/>
+        <set-variable variableName="filePathToRead" value="#[flowVars.MainDirectory + 'resources/' + payload]" doc:name="filePathToRead- Concat MainDirectory with 'resourcess' and payload to try &amp; find file"/>
+        <flow-ref name="sf_readFile" doc:name="sf_ReadFile"/>
+        <choice doc:name="Choice">
+            <when expression="#[payload == null]">
+                <logger message="No File Test to Parse" level="INFO" doc:name="Logger"/>
+            </when>
+            <otherwise>
+                <message-properties-transformer scope="invocation" doc:name="Set Regex Arguments">
+                    <add-message-property key="regex" value="lookup\(&quot;([^\s]+)&quot;,"/>
+                    <add-message-property key="stringToTest" value="#[message.payloadAs(java.lang.String)]"/>
+                </message-properties-transformer>
+                <flow-ref name="sf_processFoundDW_ExtractFlowNames" doc:name="sf_processFoundDW_ExtractFlowNames"/>
+            </otherwise>
+        </choice>
+    </flow>
+    <flow name="f_processFoundComponent">
+        <idempotent-message-filter idExpression="#[message:payload]" onUnaccepted="f_nullPayload" doc:name="Idempotent Message - onUnaccepted Null payload">
+            <in-memory-store name="ProcessFoundComponentInMemoryObjectStore" maxEntries="60000" entryTTL="120" expirationInterval="3600"/>
+        </idempotent-message-filter>
+        <message-properties-transformer scope="invocation" doc:name="Save Input As Individual Variables">
+            <add-message-property key="payload_source" value="#[payload.source]"/>
+            <add-message-property key="payload_caption" value="#[payload.caption]"/>
+            <add-message-property key="payload_methodType" value="#[payload.methodType]"/>
+        </message-properties-transformer>
+        <set-payload value="#[payload.target.replace('.','/')]" doc:name="Set Payload.target to Payload &amp; Replace periods"/>
+        <set-variable variableName="filePathToRead" value="#[flowVars.MainDirectory + 'java/' + payload + '.java']" doc:name="filePathToRead- Concat MainDirectory with 'resourcess' and payload to try &amp; find file"/>
+        <flow-ref name="sf_readFile" doc:name="sf_ReadFile"/>
+        <choice doc:name="Choice">
+            <when expression="">
+                <logger message="No File Test to Parse" level="INFO" doc:name="Logger"/>
+            </when>
+            <otherwise>
+                <message-properties-transformer scope="invocation" doc:name="Set Regex Arguments">
+                    <add-message-property key="regex" value="lookupFlowConstruct\(&quot;([^\s]+)&quot;\)"/>
+                    <add-message-property key="stringToTest" value="#[message.payloadAs(java.lang.String)]"/>
+                </message-properties-transformer>
+                <flow-ref name="sf_processFoundDW_ExtractFlowNames" doc:name="sf_processFoundDW_ExtractFlowNames"/>
+            </otherwise>
+        </choice>
+    </flow>
+    <sub-flow name="sf_processFoundDW_ExtractFlowNames">
+        <component class="com.lowcoders.utils.ExtractLookupFlowName" doc:name="Extract Any Lookup Flow Names"/>
+        <choice doc:name="Choice">
+            <when expression="#[payload.size() == 0]">
+                <set-payload value="#[null]" doc:name="Set Payload"/>
+            </when>
+            <otherwise>
+                <dw:transform-message doc:name="Transform Message - Format Edge">
+                    <dw:input-payload mimeType="application/java" />
+                    <dw:set-payload resource="classpath:dataweave/formatEdge.dwl"/>
+
+                </dw:transform-message>
+            </otherwise>
+        </choice>
+    </sub-flow>
+    <sub-flow name="sf_readFile">
+        <component doc:name="CheckFileExists">
+            <singleton-object class="com.lowcoders.utils.CheckFileExists"/>
+        </component>
+        <choice doc:name="Choice">
+            <when expression="#[payload == false]">
+                <set-variable variableName="userDialogMessage" value="#['Unable to find file '+flowVars.filePathToRead +' Do you want to browse for it yourself or Cancel to ignore?']" doc:name="userDialogMessage"/>
+                <flow-ref name="sf_confirmDialog" doc:name="sf_confirmDialog"/>
+                <choice doc:name="Choice">
+                    <when expression="#[payload == 1]">
+                        <component class="com.lowcoders.ui.FileChooser" doc:name="Java - FileChooser"/>
+                        <choice doc:name="Choice">
+                            <when expression="#[payload == null]">
+                                <set-variable variableName="userDialogMessage" value="You appear to have not selected a file and therefore the application is unable to continue and will exit" doc:name="userDialogMessage"/>
+                                <flow-ref name="sf_popupDialog" doc:name="sf_popupDialog"/>
+                                <flow-ref name="sf_exitJVM" doc:name="sf_exitJVM"/>
+                            </when>
+                            <otherwise>
+                                <set-variable variableName="filePathToRead" value="#[payload]" doc:name="filePathToRead"/>
+                                <flow-ref name="sf_readExistingFile" doc:name="sf_readExistingFile"/>
+                            </otherwise>
+                        </choice>
+                    </when>
+                    <otherwise>
+                        <flow-ref name="f_nullPayload" doc:name="f_nullPayload"/>
+                    </otherwise>
+                </choice>
+            </when>
+            <otherwise>
+                <flow-ref name="sf_readExistingFile" doc:name="sf_readExistingFile"/>
+            </otherwise>
+        </choice>
+    </sub-flow>
+    <sub-flow name="sf_createHtml">
+        <set-payload value="#[message.payloadAs(java.lang.String)]" encoding="UTF-8" mimeType="text/json" doc:name="Set Payload"/>
+        <set-variable variableName="fileName" value="${fileName}#[function:dateStamp].html" doc:name="Set File Name"/>
+        <choice doc:name="No Dynamic Loading in Mule">
+            <when expression="#[flowVars.templateType == 'AlchemyCluster']">
+                <parse-template location="template/AlchemyCluster.html" doc:name="Cluster Parse Template"/>
+            </when>
+            <when expression="#[flowVars.templateType == 'Mule_BendItLikeBeckham']">
+                <parse-template location="template/Mule_BendItLikeBeckham.html" doc:name="Mule Parse Template Curved True"/>
+
+            </when>
+            <when expression="#[flowVars.templateType == 'Mule_StraightAsAnArrow']">
+                <parse-template location="template/Mule_StraightAsAnArrow.html" doc:name="Mule Parse Template Curved False"/>
+            </when>
+            <otherwise>
+                <parse-template location="template/AlchemyBasic.html" doc:name="Parse Template"/>
+            </otherwise>
+        </choice>
+        <file:outbound-endpoint path="${filePath}" outputPattern="#[flowVars.fileName]" connector-ref="Synchronous-File-Connector-NO-THREADING" responseTimeout="10000" doc:name="Synchronous File Connector"/>
+    </sub-flow>
+    <sub-flow name="sf_launchBrowser">
+        <set-variable variableName="fullPath" value="${filePath}#[flowVars.fileName]" doc:name="Set fullPath"/>
+        <component class="com.lowcoders.utils.DesktopLaunchFileApplication" doc:name="Java - Launch Desktop App"/>
+    </sub-flow>
+    <flow name="f_nullPayload">
+        <set-payload value="#[null]" doc:name="Null Payload"/>
+    </flow>
+    <sub-flow name="sf_endGame">
+        <set-variable variableName="userDialogMessage" value="Finished! JVM will now exit and thank you for your interest." doc:name="Set Dialog Message"/>
+        <flow-ref name="sf_popupDialog" doc:name="sf_popupDialog"/>
+        <flow-ref name="sf_exitJVM" doc:name="sf_exitJVM"/>
+    </sub-flow>
+    <sub-flow name="sf_letsGoAroundAgain">
+        <flow-ref name="sf_confirmDialog" doc:name="sf_confirmDialog"/>
+        <choice doc:name="Choice">
+            <when expression="#[payload == 1]">
+                <flow-ref name="f_main" doc:name="f_main"/>
+            </when>
+            <otherwise>
+                <flow-ref name="sf_exitJVM" doc:name="sf_exitJVM"/>
+            </otherwise>
+        </choice>
+    </sub-flow>
+
+    <sub-flow name="sf_popupDialog">
+        <component class="com.lowcoders.ui.UserMessageDialog" doc:name="Java - Dialog Message"/>
+    </sub-flow>
+        <sub-flow name="sf_confirmDialog">
+        <component class="com.lowcoders.ui.ConfirmDialog" doc:name="Java - Confirm Dialog"/>
+    </sub-flow>
+    <sub-flow name="sf_readExistingFile">
+        <scripting:component doc:name="Groovy - Read File *Sorry some times you have to use scripting.">
+            <scripting:script engine="Groovy"><![CDATA[new File(flowVars['filePathToRead']).text;]]></scripting:script>
+        </scripting:component>
+    </sub-flow>
+    
+    
+    <sub-flow name="sf_exitJVM">
+        <component class="com.lowcoders.utils.ExitJVM" doc:name="Java - Exit JVM"/>
+
+    </sub-flow>
+    <choice-exception-strategy name="Choice_Exception_Strategy">
+        <catch-exception-strategy when="#[exception.causedBy(org.mule.extension.validation.api.ValidationException)]" doc:name="Validation Exception">
+            <set-variable variableName="userDialogMessage" value="#[exception.cause != null ? exception.cause : exception]" doc:name="Set Dialog Message"/>
+            <flow-ref name="sf_letsGoAroundAgain" doc:name="sf_letsGoAroundAgain"/>
+        </catch-exception-strategy>
+        <catch-exception-strategy doc:name="Default Exception Handler">
+            <set-variable variableName="userDialogMessage" value="#[exception.cause != null ? exception.cause : exception]" doc:name="Set Dialog Message"/>
+            <flow-ref name="sf_popupDialog" doc:name="sf_popupDialog"/>
+            <flow-ref name="sf_exitJVM" doc:name="sf_exitJVM"/>
+        </catch-exception-strategy>
+    </choice-exception-strategy>
+
+
+</mule>

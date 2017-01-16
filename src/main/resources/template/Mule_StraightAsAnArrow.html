@@ -1,0 +1,161 @@
+<html>
+<head>
+<link rel="stylesheet" href="alchemy.0.4.2/alchemy.css"/>
+</head>
+<body>
+  <div class="alchemy" id="alchemy"></div>
+  <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.16.4/lodash.min.js" charset="utf-8"></script>
+  <script src="alchemy.0.4.2/alchemy.js" charset="utf-8"></script>
+  
+<script type="text/javascript">
+var myData = #[payload];
+alchemy.begin 
+(
+
+		{
+			dataSource : myData,
+			backgroundColour: "DIMGRAY",
+			curvedEdges : false,
+			directedEdges : true,
+			edgeArrowSize : 25,
+			fixNodes : false,
+			fixRootNodes : false,
+			cluster : false,
+			nodeCaptionsOnByDefault : true,
+			zoomControls: true,
+			nodeTypes : {
+				"type" : ["flow", "sub-flow", "batch", "choice-exception-strategy", "mapping-exception-strategy", "catch-exception-strategy", "rollback-exception-strategy"]
+			},
+			edgeTypes : {
+				"methodType" : ["flow-ref", "transform-message", "idempotent-message-filter", "message-filter", "component", "execute"]
+			},		
+			nodeStyle : {
+				"all" : {
+					"radius" : 10,
+					"color" : "red",
+					"borderColor" : function(d) {return (d.getProperties('color'))}, 
+					"captionColor" : "#FFFFFF",
+					"captionBackground" : null,
+					"captionSize" : 12,
+					"selected" : {
+						"color" : "#FFFFFF",
+						"borderColor" : "#349FE3"
+					},
+					"highlighted" : {
+						"color" : "#EEEEFF"
+					},
+					"hidden" : {
+						"color" : "none",
+						"borderColor" : "none"
+					}
+				},
+				"flow":{
+					"radius" : 15,
+                    "color": "SLATEGRAY",
+                    "selected": {
+                        "color": "#ffffff",
+                    },                    
+                    "highlighted": {
+                        "color": "#b4dcff"
+                    }
+                },
+				"sub-flow":{
+					"radius" : 10,
+                    "color": "SLATEGRAY",
+                    "selected": {
+                        "color": "#ffffff",
+                    },                    
+                    "highlighted": {
+                        "color": "#b4dcff"
+                    }
+                },
+				"batch":{
+					"radius" : 15,
+                    "color": "DARKMAGENTA",
+                    "selected": {
+                        "color": "#ffffff",
+                    },                    
+                    "highlighted": {
+                        "color": "#b4dcff"
+                    }
+                }
+			},
+			edgeStyle : {
+				"all" : {
+					"width" : 4,
+					"color" : "#CCC",
+					"opacity" : 0.5,
+					"selected" : {
+						"opacity" : 1
+					},
+					"highlighted" : {
+						"opacity" : 1
+					},
+					"hidden" : {
+						"opacity" : 0
+					}
+				},
+				"transform-message" : {
+					"width" : 4,
+					"color" : "green",
+					"opacity" : 0.5,
+					"selected" : {
+						"opacity" : 1
+					},
+					"highlighted" : {
+						"opacity" : 1
+					},
+					"hidden" : {
+						"opacity" : 0
+					}
+				},
+				"execute" : {
+					"width" : 4,
+					"color" : "DARKMAGENTA",
+					"opacity" : 0.5,
+					"selected" : {
+						"opacity" : 1
+					},
+					"highlighted" : {
+						"opacity" : 1
+					},
+					"hidden" : {
+						"opacity" : 0
+					}
+				},
+				"idempotent-message-filter" : {
+					"width" : 4,
+					"color" : "ORANGERED",
+					"opacity" : 0.5,
+					"selected" : {
+						"opacity" : 1
+					},
+					"highlighted" : {
+						"opacity" : 1
+					},
+					"hidden" : {
+						"opacity" : 0
+					}
+				},
+				"message-filter" : {
+					"width" : 4,
+					"color" : "ORANGERED",
+					"opacity" : 0.5,
+					"selected" : {
+						"opacity" : 1
+					},
+					"highlighted" : {
+						"opacity" : 1
+					},
+					"hidden" : {
+						"opacity" : 0
+					}
+				}
+			}
+		}
+
+)
+</script>
+  </body>
+</html>
